@@ -34,10 +34,6 @@
                     </field>
                 </group>
             </xpath>
-
-            <xpath expr="//field[@name='tax_id']" position="after">
-                <field name="drei"/>
-            </xpath>
         </field>
     </record>
 
