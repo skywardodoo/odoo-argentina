@@ -5,6 +5,13 @@ from odoo.exceptions import UserError, ValidationError
 class AccountTax(models.Model):
     _inherit = "account.tax"
 
+    # Backward compatibility alias kept for inherited views/code that still
+    # reference the old field name.
+    withholding_sequence_id = fields.Many2one(
+        related="l10n_ar_withholding_sequence_id",
+        readonly=False,
+    )
+
     # mejora de usabilidad, duplicar un impuesto mantiene la secuencia
     l10n_ar_withholding_sequence_id = fields.Many2one(
         copy=True,
