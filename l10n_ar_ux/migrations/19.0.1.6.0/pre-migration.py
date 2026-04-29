@@ -5,6 +5,37 @@ from odoo import SUPERUSER_ID, api
 _logger = logging.getLogger(__name__)
 
 
+def _iter_account_tag_fk_references(cr):
+    """Return all FK references that point to account_account_tag."""
+    cr.execute(
+        """
+        SELECT n.nspname, c.relname, a.attname
+        FROM pg_constraint con
+        JOIN pg_class c ON c.oid = con.conrelid
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        JOIN unnest(con.conkey) AS k(attnum) ON TRUE
+        JOIN pg_attribute a ON a.attrelid = con.conrelid AND a.attnum = k.attnum
+        WHERE con.contype = 'f'
+          AND con.confrelid = 'account_account_tag'::regclass
+        """
+    )
+    return cr.fetchall()
+
+
+def _is_account_tag_referenced(cr, references, tag_id):
+    """Check if a given account.account.tag is still referenced by any FK table."""
+    for schema, table, column in references:
+        query = 'SELECT 1 FROM "{}"."{}" WHERE "{}" = %s LIMIT 1'.format(
+            schema.replace('"', '""'),
+            table.replace('"', '""'),
+            column.replace('"', '""'),
+        )
+        cr.execute(query, (tag_id,))
+        if cr.fetchone():
+            return True
+    return False
+
+
 def migrate(cr, version):
     """Las account_account_tags ya no las usamos en 19 y por lo tanto las eliminamos
     ver  commit relacionado en https://github.com/ingadhoc/odoo-argentina/commit/63d2dd6eaab9cdadfb81a7f466d1c76d39aad7a9
@@ -35,20 +66,11 @@ def migrate(cr, version):
     # Jurisdiction tax tags were deprecated previously; keep them if they are
     # still linked to tax repartition lines in migrated databases.
     xml_id_names += [f"tag_tax_jurisdiccion_{code}" for code in range(901, 925)]
+    account_tag_fk_refs = _iter_account_tag_fk_references(cr)
     for xml_id_name in xml_id_names:
         account_tag_id = env.ref(f"l10n_ar_ux.{xml_id_name}", raise_if_not_found=False)
         if account_tag_id:
-            cr.execute(
-                """
-                SELECT 1
-                FROM account_account_tag_account_tax_repartition_line_rel
-                WHERE account_account_tag_id = %s
-                LIMIT 1
-            """,
-                (account_tag_id.id,),
-            )
-            used_in_taxes = cr.fetchone()
-            if used_in_taxes:
+            if _is_account_tag_referenced(cr, account_tag_fk_refs, account_tag_id.id):
                 _logger.info(f"Eliminamos el extenal ref l10n_ar_ux.{xml_id_name} ya que se encuentra en uso")
                 cr.execute(
                     """
