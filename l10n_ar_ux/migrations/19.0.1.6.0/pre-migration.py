@@ -32,6 +32,9 @@ def migrate(cr, version):
         "tag_ret_perc_iibb_aplicada",
         "tag_ret_perc_sicore_aplicada",
     ]
+    # Jurisdiction tax tags were deprecated previously; keep them if they are
+    # still linked to tax repartition lines in migrated databases.
+    xml_id_names += [f"tag_tax_jurisdiccion_{code}" for code in range(901, 925)]
     for xml_id_name in xml_id_names:
         account_tag_id = env.ref(f"l10n_ar_ux.{xml_id_name}", raise_if_not_found=False)
         if account_tag_id:
