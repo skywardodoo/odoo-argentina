@@ -35,9 +35,9 @@
                 </group>
             </xpath>
 
-            <group name="others_col_1">
+            <xpath expr="//field[@name='tax_id']" position="after">
                 <field name="drei"/>
-            </group>
+            </xpath>
         </field>
     </record>
 
